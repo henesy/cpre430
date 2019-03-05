@@ -1,2 +1,4 @@
 *.o
+prog1/netdump/netdump
+prog2/netdump/netdump
 
