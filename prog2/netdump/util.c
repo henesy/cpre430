@@ -5,14 +5,21 @@
 
 #include <ctype.h>
 #include <errno.h>
+
 #ifdef HAVE_FCNTL_H
+
 #include <fcntl.h>
+
 #endif
 #ifdef HAVE_MALLOC_H
+
 #include <malloc.h>
+
 #endif
+
 #include "pcap.h"
 #include <stdio.h>
+
 #if __STDC__
 #include <stdarg.h>
 #else
@@ -29,11 +36,13 @@ extern char *program_name;
 
 /* VARARGS */
 #if __STDC__
+
 error(const char *fmt, ...)
+
 #else
 error(fmt, va_alist)
-	const char *fmt;
-	va_dcl
+const char *fmt;
+va_dcl
 #endif
 {
 	va_list ap;
@@ -61,8 +70,8 @@ void
 warning(const char *fmt, ...)
 #else
 warning(fmt, va_alist)
-	const char *fmt;
-	va_dcl
+const char *fmt;
+va_dcl
 #endif
 {
 	va_list ap;

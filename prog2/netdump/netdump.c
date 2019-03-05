@@ -29,10 +29,11 @@ extern void bpf_dump(const struct bpf_program *, int);
 extern char *copy_argv(char **);
 
 /* Forwards */
- void program_ending(int);
+void program_ending(int);
 
 /* Length of saved portion of packet. */
-int snaplen = 1500;;
+int snaplen = 1500;
+;
 
 static pcap_t *pd;
 
@@ -48,13 +49,13 @@ main(int argc, char **argv)
 	bpf_u_int32 localnet, netmask;
 	char *cp, *cmdbuf, *device;
 	struct bpf_program fcode;
-	 void (*oldhandler)(int);
+	void (*oldhandler)(int);
 	u_char *pcap_userdata;
 	char ebuf[PCAP_ERRBUF_SIZE];
 
 	cnt = -1;
 	device = NULL;
-	
+
 	if ((cp = strrchr(argv[0], '/')) != NULL)
 		program_name = cp + 1;
 	else
@@ -67,19 +68,19 @@ main(int argc, char **argv)
 		{
 		case 'p':
 			pflag = 1;
-		break;
+			break;
 		case 'a':
 			aflag = 1;
-		break;
+			break;
 		case '?':
 		default:
 			done = 1;
-		break;
+			break;
 		}
 		if (done) break;
 	}
 	if (argc > (optind)) cmdbuf = copy_argv(&argv[optind]);
-		else cmdbuf = "";
+	else cmdbuf = "";
 
 	if (device == NULL) {
 		device = pcap_lookupdev(ebuf);
@@ -106,7 +107,7 @@ main(int argc, char **argv)
 
 	if (pcap_compile(pd, &fcode, cmdbuf, 1, netmask) < 0)
 		error("%s", pcap_geterr(pd));
-	
+
 	(void)setsignal(SIGTERM, program_ending);
 	(void)setsignal(SIGINT, program_ending);
 	/* Cooperate with nohup(1) */
@@ -126,24 +127,28 @@ main(int argc, char **argv)
 	exit(0);
 }
 
-/* routine is executed on exit */
+/* routine is executed on exit
+
+	TODO
+*/
 void program_ending(int signo)
 {
 	struct pcap_stat stat;
 
 	if (pd != NULL && pcap_file(pd) == NULL) {
-		(void)fflush(stdout);
+		fflush(stdout);
 		putc('\n', stderr);
+
 		if (pcap_stats(pd, &stat) < 0)
-			(void)fprintf(stderr, "pcap_stats: %s\n",
-			    pcap_geterr(pd));
+			fprintf(stderr, "pcap_stats: %s\n", pcap_geterr(pd));
 		else {
-			(void)fprintf(stderr, "%d packets received by filter\n",
-			    stat.ps_recv);
-			(void)fprintf(stderr, "%d packets dropped by kernel\n",
-			    stat.ps_drop);
+			fprintf(stderr, "%d packets received by filter\n", stat.ps_recv);
+			fprintf(stderr, "%d packets dropped by kernel\n", stat.ps_drop);
 		}
 	}
+
+	// TODO -- statistics on number of headers: Ether, IP, TCP, UDP
+
 	exit(0);
 }
 
@@ -199,17 +204,15 @@ default_print(register const u_char *bp, register u_int length)
 }
 
 /*
-insert your code in this routine
-
+	TODO
 */
-
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 {
-        u_int length = h->len;
-        u_int caplen = h->caplen;
+	u_int length = h->len;
+	u_int caplen = h->caplen;
 
 
-        default_print(p, caplen);
-        putchar('\n');
+	default_print(p, caplen);
+	putchar('\n');
 }
 
