@@ -17,6 +17,9 @@ RETSIGTYPE (*setsignal(int, RETSIGTYPE (*)(int)))(int);
 
 char cpre580f98[] = "netdump";
 
+/* Prog2 counters */
+uint nether, nipv4, ntcp, nudp, nbroadcast;
+
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p);
 
 int packettype;
@@ -147,7 +150,13 @@ void program_ending(int signo)
 		}
 	}
 
-	// TODO -- statistics on number of headers: Ether, IP, TCP, UDP
+	fprintf(stderr, "%d Ether packets\n", nether);
+	fprintf(stderr, "%d IPv4 packets\n", nipv4);
+	fprintf(stderr, "%d TCP packets\n", ntcp);
+	fprintf(stderr, "%d UDP packets\n", nudp);
+	fprintf(stderr, "%d broadcast packets\n", nbroadcast);
+
+	// TODO -- program 3 stats
 
 	exit(0);
 }
@@ -205,14 +214,115 @@ default_print(register const u_char *bp, register u_int length)
 
 /*
 	TODO
+	
+	#5
+	== Ethernet			X
+	- dest 				X
+	- source			X
+	- type (hex)		X
+	- length (decimal)	X
+	
+	== IP
+	- payload = IP		X
+	- payload = ARP		X
+
+	== Counters 
+	- broadcast packets (if dest == FF:FF:FF:FF:FF:FF)	X
+	
+	#6
+	
+	== ARP
+	- request or reply (if identifiable)
+	- print IP addresses (std format)
+	- print all other data
+	
+	== IP
+	- print IP addresses (std format)
+	- print all other data
+	
+	== ICMP
+	- print IP addresses (std format)
+	- print all other data
+
+	== Counters 
+	- ICMP packets
+	
+	#7
+	
+	== TCP
+	- print TCP header info
+	- print options (if any) in hex
+	- print all other data
+	
+	== Counters
+	- TCP packets				X
+	- DNS packets
 */
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 {
 	u_int length = h->len;
 	u_int caplen = h->caplen;
 
-
 	default_print(p, caplen);
 	putchar('\n');
+	
+	/* == Begin Program 2 additions == */
+	putchar('\n');
+
+	uint16_t	ethertype;
+	char		destmac[18];
+	char		srcmac[18];
+	
+	// === Ethernet Frame
+	nether++;
+
+	// Destination MAC
+	snprintf(destmac, 18, "%02X:%02X:%02X:%02X:%02X:%02X", p[0], p[1], p[2], p[3], p[4], p[5]);
+	printf("DEST Address = %s\n", destmac);
+	
+	if(strcmp(destmac, "FF:FF:FF:FF:FF:FF") == 0)
+		nbroadcast++;
+	
+	// Source MAC
+	snprintf(srcmac, 18, "%02X:%02X:%02X:%02X:%02X:%02X", p[6], p[7], p[8], p[9], p[10], p[11]);
+	printf("SRC Address = %s\n", srcmac);
+
+	// Ethernet type
+	ethertype = p[12] * 256 + p[13];
+
+	// Check if ethertype is < 1536, if so, it's a payload size
+	if(ethertype < 1536)
+		goto PAYLEN;
+
+	printf("Type = %04X ", ethertype);
+
+	switch(ethertype) {
+	case 0x800:
+		printf("→ IPv4\n");
+		nipv4++;
+		printf("Payload = IPv4\n");
+	case 0x806:
+		printf("→ ARP\n");
+		printf("Payload = ARP\n");
+	case 0x86DD:
+		printf("→ IPv6\n");
+		printf("Payload = IPv6\n");
+	default:
+		printf("→ [UNDEFINED]\n");
+	}
+
+	goto IP;
+	
+	// Payload length
+	PAYLEN:
+	
+	printf("LEN = %d\n", ethertype);
+	
+	// === IP Header
+	IP:
+	
+	
+	// Ending
+	printf("\n----------\n");
 }
 
