@@ -241,8 +241,8 @@ default_print(register const u_char *bp, register u_int length)
 	- print all other data
 	
 	== IP
-	- print IP addresses (std format)
-	- print all other data
+	- print IP addresses (std format)	X
+	- print all other data				X
 	
 	== ICMP
 	- print IP addresses (std format)
@@ -313,27 +313,58 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		uint16_t		protocol;
 		uint16_t		totlen;
 		uint16_t		tos;
-		uint16_t		ident;
+		char			ident[40];
 		uint16_t		flags;
-		uint16_t		offset;
+		char			offset[40];
 		uint16_t		ttl;
-		uint16_t		checksum;
-		uint16_t		srcip;
-		uint16_t		destip;
-		uint16_t		options;
+		char			checksum[40];
+		char			srcip[40];
+		char			destip[40];
+		char			options[40];
 		uint16_t		data;
 		
 		version = ntohs((uint16_t) * &p[14]) >> 12;
 		hlen = (ntohs((uint8_t) * &p[14]) & 0x0F00) >> 8;
-		protocol = (ntohs((uint16_t) * &p[14]) << 8) >> 24;
+		
+		tos = (ntohs((uint16_t) * &p[14]) << 8) >> 24;
+
 		totlen = ntohs((uint16_t) * &p[15]);
 		
+		sprintf(ident, "%02X%02X", ntohs(p[17]) >> 8, ntohs(p[18]) >> 8);
 		
-		printf("p[14]: %02x\n", p[14]);
+		flags = (ntohs((uint16_t) * &p[19]) & 0xE000) >> 8;
+		
+		sprintf(offset, "%02X%02X", ntohs(p[20]) >> 8, ntohs(p[21]) >> 8);
+		
+		ttl = ntohs((uint16_t) * &p[22])>> 8;
+		
+		protocol = ntohs((uint16_t) * &p[23]) & 0x00FF;
+		
+		sprintf(checksum, "%02X%02X", ntohs(p[24]) >> 8, ntohs(p[25]) >> 8);
+		
+		sprintf(srcip, "%d.%d.%d.%d", ntohs(p[26]) >> 8, ntohs(p[27]) >> 8, 
+										ntohs(p[28]) >> 8, ntohs(p[29]) >> 8);
+		
+		sprintf(destip, "%d.%d.%d.%d", ntohs(p[30]) >> 8, ntohs(p[31]) >> 8, 
+										ntohs(p[32]) >> 8, ntohs(p[33]) >> 8);
+		
+		sprintf(options, "%02X%02X", ntohs(p[34]) >> 8, ntohs(p[35]) >> 8);
 		
 		printf("Version = %d\n", version);
 		printf("Header Length = %d\n", hlen);
+		printf("Type of Service = %02X\n", protocol);
+		printf("Total Length = %d\n", totlen);
+		printf("ID = %s\n", ident);
+		printf("Flags = %02X\n", flags);
+		printf("Offset = %s\n", offset);
+		printf("TTL = %d\n", ttl);
+		printf("Protocol = %X\n", protocol);
+		printf("Checksum = %s\n", checksum);
+		printf("Src IP = %s\n", srcip);
+		printf("Dest IP = %s\n", destip);
+		printf("Options = %s\n", options);
 		
+		// TODO -- more IP stuff
 		
 		// === End IPv4
 		break;
