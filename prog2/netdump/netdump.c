@@ -18,7 +18,7 @@ RETSIGTYPE (*setsignal(int, RETSIGTYPE (*)(int)))(int);
 char cpre580f98[] = "netdump";
 
 /* Prog2 counters */
-uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp;
+uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp, nicmp;
 
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p);
 
@@ -157,6 +157,7 @@ void program_ending(int signo)
 	fprintf(stderr, "%d IPv6 packets\n", nipv6);
 	fprintf(stderr, "%d TCP packets\n", ntcp);
 	fprintf(stderr, "%d UDP packets\n", nudp);
+	fprintf(stderr, "%d ICMP packets\n", nicmp);
 	fprintf(stderr, "%d broadcast packets\n", nbroadcast);
 	fprintf(stderr, "%d ARP packets\n", narp);
 
@@ -249,7 +250,7 @@ default_print(register const u_char *bp, register u_int length)
 	- print all other data
 
 	== Counters 
-	- ICMP packets
+	- ICMP packets						X
 	
 	#7
 	
@@ -364,7 +365,27 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		printf("Dest IP = %s\n", destip);
 		printf("Options = %s\n", options);
 		
-		// TODO -- more IP stuff
+		// Handle protocols that run on top of IP
+		switch(protocol) {
+		case 0:
+		case 6:
+			// TCP
+			ntcp++;
+			
+			// TODO -- tcp
+			
+			break;
+		case 1:
+			// ICMP
+			nicmp++;
+			
+			// TODO -- icmp
+			
+			break;
+		default:
+			// Undefined protocol
+			;
+		}
 		
 		// === End IPv4
 		break;
@@ -372,6 +393,9 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		// ARP
 		narp++;
 		printf("→ ARP\nPayload = ARP\n");
+		
+		// TODO -- arp stuff
+		
 		break;
 	case 0x86DD:
 		// IPv6
