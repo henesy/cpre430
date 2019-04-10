@@ -18,7 +18,7 @@ RETSIGTYPE (*setsignal(int, RETSIGTYPE (*)(int)))(int);
 char cpre580f98[] = "netdump";
 
 /* Prog2 counters */
-uint nether, nipv4, ntcp, nudp, nbroadcast;
+uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp;
 
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p);
 
@@ -150,11 +150,15 @@ void program_ending(int signo)
 		}
 	}
 
+	fprintf(stderr, "\n» Bonus stats\n");
+
 	fprintf(stderr, "%d Ether packets\n", nether);
 	fprintf(stderr, "%d IPv4 packets\n", nipv4);
+	fprintf(stderr, "%d IPv6 packets\n", nipv6);
 	fprintf(stderr, "%d TCP packets\n", ntcp);
 	fprintf(stderr, "%d UDP packets\n", nudp);
 	fprintf(stderr, "%d broadcast packets\n", nbroadcast);
+	fprintf(stderr, "%d ARP packets\n", narp);
 
 	// TODO -- program 3 stats
 
@@ -273,7 +277,8 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 	char		destmac[18];
 	char		srcmac[18];
 	
-	// === Ethernet Frame
+	// === Ethernet Frame -- 28 bytes
+	printf("» Ethernet Frame\n");
 	nether++;
 
 	// Destination MAC
@@ -298,31 +303,65 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 
 	switch(ethertype) {
 	case 0x800:
-		printf("→ IPv4\n");
+		// === IPv4 Header -- 40 bytes
 		nipv4++;
-		printf("Payload = IPv4\n");
+		printf("→ IPv4\nPayload = IPv4\n");		
+		printf("\n» IPv4 Header\n");
+		
+		uint16_t		version;
+		uint16_t		hlen;
+		uint16_t		protocol;
+		uint16_t		totlen;
+		uint16_t		tos;
+		uint16_t		ident;
+		uint16_t		flags;
+		uint16_t		offset;
+		uint16_t		ttl;
+		uint16_t		checksum;
+		uint16_t		srcip;
+		uint16_t		destip;
+		uint16_t		options;
+		uint16_t		data;
+		
+		version = ntohs((uint16_t) * &p[14]) >> 12;
+		hlen = (ntohs((uint8_t) * &p[14]) & 0x0F00) >> 8;
+		protocol = (ntohs((uint16_t) * &p[14]) << 8) >> 24;
+		totlen = ntohs((uint16_t) * &p[15]);
+		
+		
+		printf("p[14]: %02x\n", p[14]);
+		
+		printf("Version = %d\n", version);
+		printf("Header Length = %d\n", hlen);
+		
+		
+		// === End IPv4
+		break;
 	case 0x806:
-		printf("→ ARP\n");
-		printf("Payload = ARP\n");
+		// ARP
+		narp++;
+		printf("→ ARP\nPayload = ARP\n");
+		break;
 	case 0x86DD:
-		printf("→ IPv6\n");
-		printf("Payload = IPv6\n");
+		// IPv6
+		nipv6++;
+		printf("→ IPv6\nPayload = IPv6\n");
+		break;
 	default:
 		printf("→ [UNDEFINED]\n");
 	}
 
-	goto IP;
+	goto PROTO;
 	
 	// Payload length
-	PAYLEN:
+	PAYLEN:;
 	
 	printf("LEN = %d\n", ethertype);
+
+	PROTO:;
 	
-	// === IP Header
-	IP:
-	
-	
+	// What goes here?
+
 	// Ending
 	printf("\n----------\n");
 }
-
