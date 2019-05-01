@@ -37,7 +37,7 @@ extern char *program_name;
 /* VARARGS */
 #if __STDC__
 
-error(const char *fmt, ...)
+int error(const char *fmt, ...)
 
 #else
 error(fmt, va_alist)

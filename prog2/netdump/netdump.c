@@ -237,17 +237,17 @@ default_print(register const u_char *bp, register u_int length)
 	#6
 	
 	== ARP
-	- request or reply (if identifiable)
-	- print IP addresses (std format)
-	- print all other data
+	- request or reply (if identifiable)	X
+	- print IP addresses (std format)		X
+	- print all other data					X
 	
 	== IP
 	- print IP addresses (std format)	X
 	- print all other data				X
 	
 	== ICMP
-	- print IP addresses (std format)
-	- print all other data
+	- print IP addresses (std format)	X
+	- print all other data				X
 
 	== Counters 
 	- ICMP packets						X
@@ -339,7 +339,9 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		
 		ttl = ntohs((uint16_t) * &p[22])>> 8;
 		
-		protocol = ntohs((uint16_t) * &p[23]) & 0x00FF;
+		// Might be bad value?
+		// protocol = ntohs(p[23]) & 0x00FF;
+		protocol = ntohs(p[23]) >> 8;
 		
 		sprintf(checksum, "%02X%02X", ntohs(p[24]) >> 8, ntohs(p[25]) >> 8);
 		
@@ -368,6 +370,7 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		// Handle protocols that run on top of IP
 		switch(protocol) {
 		case 0:
+			// TCP
 		case 6:
 			// TCP
 			ntcp++;
@@ -375,13 +378,30 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 			// TODO -- tcp
 			
 			break;
+
 		case 1:
 			// ICMP
-			nicmp++;
+			nicmp++;	
+			printf("\n» ICMP Info\n");
 			
-			// TODO -- icmp
+			uint16_t	type;
+			uint16_t	code;
+			char		checksum[40];
+			char		parameter[40];
+
+			type = ntohs(p[36]) >> 8;
 			
+			code = ntohs(p[37]) >> 8;
+			
+			sprintf(checksum, "%02X%02X", ntohs(p[38]) >> 8, ntohs(p[39]) >> 8);
+			
+			sprintf(parameter, "%02X%02X%02X%02X", ntohs(p[40]) >> 8, ntohs(p[41]) >> 8,
+													ntohs(p[42]) >> 8, ntohs(p[43]) >> 8);
+			
+			// TODO -- print icmp
+	
 			break;
+			
 		default:
 			// Undefined protocol
 			;
@@ -392,9 +412,64 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 	case 0x806:
 		// ARP
 		narp++;
-		printf("→ ARP\nPayload = ARP\n");
+		printf("→ ARP\nPayload = ARP\n");	
+		printf("\n» ARP Info\n");
 		
 		// TODO -- arp stuff
+		char		hw_type[40];
+		char		proto_type[40];
+		uint16_t	hw_len;
+		uint16_t	proto_len;
+		uint16_t	op0, op1;
+		
+		char		fromhw_addr[40];
+		char		from_ip[40];
+		char		tohw_addr[40];
+		char		to_ip[40];
+		
+		sprintf(hw_type, "%02X%02X", ntohs(p[13]) >> 8, ntohs(p[14]) >> 8);
+		
+		sprintf(proto_type, "%02X%02X", ntohs(p[15]) >> 8, ntohs(p[16]) >> 8);
+		
+		hw_len = ntohs(p[17]) >> 8;
+		
+		proto_len = ntohs(p[18]) >> 8;
+		
+		op0 = ntohs(p[19]) >> 8;
+		
+		op1 = ntohs(p[20]) >> 8;
+		
+		sprintf(fromhw_addr, "%02X:%02X:%02X:%02X:%02X:%02X", 
+			ntohs(p[21]) >> 8, ntohs(p[22]) >> 8, ntohs(p[23]) >> 8,
+			ntohs(p[24]) >> 8, ntohs(p[25]) >> 8, ntohs(p[26]) >> 8);
+		
+		sprintf(from_ip, "%d.%d.%d.%d", ntohs(p[27]) >> 8, ntohs(p[28]) >> 8,
+											ntohs(p[29]) >> 8, ntohs(p[30]) >> 8);
+		
+		// Might be incorrect
+		sprintf(tohw_addr, "%02X:%02X:%02X:%02X:%02X:%02X", 
+			ntohs(p[31]) >> 8, ntohs(p[33]) >> 8, ntohs(p[34]) >> 8,
+			ntohs(p[35]) >> 8, ntohs(p[36]) >> 8, ntohs(p[37]) >> 8);
+		
+		sprintf(to_ip, "%d.%d.%d.%d", ntohs(p[38]) >> 8, ntohs(p[39]) >> 8,
+										ntohs(p[40]) >> 8, ntohs(p[41]) >> 8);
+
+		// Printing				
+		printf("Req/Rep = ");
+		if(op1 == 1)
+			printf("Request\n");
+		else
+			printf("Reply\n");
+			
+		printf("Hardware Type = %s\n", hw_type);
+		printf("Protocol Type = %s\n", proto_type);
+		printf("Hardware Len = %02X\n", hw_len);
+		printf("Protocol Len = %02X\n", proto_len);
+		printf("Operation = %02X%02X\n", op0, op1);
+		printf("From HW addr = %s\n", fromhw_addr);
+		printf("From IP addr = %s\n", from_ip);
+		printf("To HW addr = %s\n", tohw_addr);
+		printf("To IP addr = %s\n", to_ip);
 		
 		break;
 	case 0x86DD:
@@ -418,5 +493,5 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 	// What goes here?
 
 	// Ending
-	printf("\n----------\n");
+	printf("\n────────────────────────\n");
 }
