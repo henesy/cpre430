@@ -18,7 +18,7 @@ RETSIGTYPE (*setsignal(int, RETSIGTYPE (*)(int)))(int);
 char cpre580f98[] = "netdump";
 
 /* Prog2 counters */
-uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp, nicmp;
+uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp, nicmp, ndns;
 
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p);
 
@@ -160,6 +160,7 @@ void program_ending(int signo)
 	fprintf(stderr, "%d ICMP packets\n", nicmp);
 	fprintf(stderr, "%d broadcast packets\n", nbroadcast);
 	fprintf(stderr, "%d ARP packets\n", narp);
+	fprintf(stderr, "%d DNS packets\n", ndns);
 
 	// TODO -- program 3 stats
 
@@ -255,13 +256,23 @@ default_print(register const u_char *bp, register u_int length)
 	#7
 	
 	== TCP
-	- print TCP header info
-	- print options (if any) in hex
-	- print all other data
+	- print TCP header info				X
+	- print options (if any) in hex		X
+	- print all other data				X
+		
+	== Counters
+	- TCP packets						X
+	- DNS packets						X
+	
+	#9
 	
 	== Counters
-	- TCP packets				X
-	- DNS packets
+	- 
+	
+	#10
+	
+	== Counters
+	- 
 */
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 {
@@ -374,8 +385,83 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		case 6:
 			// TCP
 			ntcp++;
+			printf("\n» TCP Info\n");
 			
-			// TODO -- tcp
+			char		src_port[40];
+			uint16_t	sp0, sp1;		// For port checks
+			char		dest_port[40];
+			uint16_t	dp0, dp1;		// For port checks
+			char		seq[40];
+			char		ack[40];
+			uint16_t	h_len;			// header length
+			uint16_t	res;
+			uint16_t	flags;
+			char		wsize[40];		// window size
+			char		checksum_tcp[40];
+			char		urgent[40];
+			char		opts[40];
+		
+			sprintf(src_port, "%02X%02X", ntohs(p[36]) >> 8, ntohs(p[37]) >> 8);
+			
+			sp0 = ntohs(p[36]) >> 8;
+			sp1 = ntohs(p[37]) >> 8;
+			
+			sprintf(dest_port, "%02X%02X", ntohs(p[38]) >> 8, ntohs(p[39]) >> 8);
+			
+			dp0 = ntohs(p[38]) >> 8;
+			dp1 = ntohs(p[39]) >> 8;
+			
+			sprintf(seq, "%02X%02X%02X%02X", ntohs(p[40]) >> 8, ntohs(p[41]) >> 8, 
+												ntohs(p[42]) >> 8, ntohs(p[43]) >> 8);
+			
+			sprintf(ack, "%02X%02X%02X%02X", ntohs(p[44]) >> 8, ntohs(p[45]) >> 8, 
+												ntohs(p[46]) >> 8, ntohs(p[47]) >> 8);
+			
+			h_len = ntohs(p[48]) >> 8;
+			
+			res = ntohs(p[49]) >> 12;
+			
+			flags = ntohs(p[49]) >> 8;
+			
+			sprintf(wsize, "%02X%02X", ntohs(p[50]) >> 8, ntohs(p[51]) >> 8);
+			
+			sprintf(checksum_tcp, "%02X%02X", ntohs(p[52]) >> 8, ntohs(p[53]) >> 8);
+			
+			sprintf(urgent, "%02X%02X", ntohs(p[54]) >> 8, ntohs(p[55]) >> 8);
+			
+			sprintf(opts, "%02X%02X%02X%02X", ntohs(p[56]) >> 8, ntohs(p[57]) >> 8, 
+													ntohs(p[58]) >> 8, ntohs(p[59]) >> 8);
+			
+			// Identify TCP packet elements
+			
+			// DNS
+			if(dp0 == 0 && dp1 == 53)
+				ndns++;
+			if(sp0 == 0 && sp1 == 53)
+				ndns++;
+			
+			// Printing			
+			printf("Source Port = %s\n", src_port);
+			
+			printf("Dest Port = %s\n", dest_port);
+			
+			printf("Sequence # = %s\n", seq);
+			
+			printf("Ack # = %s\n", ack);
+			
+			printf("Header Len = %02X\n", h_len);
+			
+			printf("Reserved = %02X\n", res);
+			
+			printf("Flags = %02X\n", flags);
+			
+			printf("Window Size = %s\n", wsize);
+			
+			printf("Checksum = %s\n", checksum_tcp);
+			
+			printf("Urgent = %s\n", urgent);
+			
+			printf("Options = %s\n", opts);
 			
 			break;
 
@@ -398,7 +484,10 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 			sprintf(parameter, "%02X%02X%02X%02X", ntohs(p[40]) >> 8, ntohs(p[41]) >> 8,
 													ntohs(p[42]) >> 8, ntohs(p[43]) >> 8);
 			
-			// TODO -- print icmp
+			printf("Type = %02X\n", type);
+			printf("Code = %02X\n", code);
+			printf("Checksum = %s\n", checksum);
+			printf("Parameter = %s\n", parameter);
 	
 			break;
 			
@@ -415,7 +504,6 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		printf("→ ARP\nPayload = ARP\n");	
 		printf("\n» ARP Info\n");
 		
-		// TODO -- arp stuff
 		char		hw_type[40];
 		char		proto_type[40];
 		uint16_t	hw_len;
