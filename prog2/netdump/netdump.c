@@ -18,7 +18,7 @@ RETSIGTYPE (*setsignal(int, RETSIGTYPE (*)(int)))(int);
 char cpre580f98[] = "netdump";
 
 /* Prog2 counters */
-uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp, nicmp, ndns;
+uint nether, nipv4, nipv6, ntcp, nudp, nbroadcast, narp, nicmp, ndns, nsmtp, npop, nimap, nhttp;
 
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p);
 
@@ -161,6 +161,10 @@ void program_ending(int signo)
 	fprintf(stderr, "%d broadcast packets\n", nbroadcast);
 	fprintf(stderr, "%d ARP packets\n", narp);
 	fprintf(stderr, "%d DNS packets\n", ndns);
+	fprintf(stderr, "%d SMTP packets\n", nsmtp);
+	fprintf(stderr, "%d POP packets\n", npop);
+	fprintf(stderr, "%d IMAP packets\n", nimap);
+	fprintf(stderr, "%d HTTP packets\n", nhttp);
 
 	// TODO -- program 3 stats
 
@@ -266,13 +270,23 @@ default_print(register const u_char *bp, register u_int length)
 	
 	#9
 	
+	== Print Payloads
+	- smtp								X
+	- pop								X
+	- imap								X
+	
 	== Counters
-	- 
+	- smtp								X
+	- pop								X
+	- imap								X
 	
 	#10
 	
+	== Print Payloads
+	- http								X
+	
 	== Counters
-	- 
+	- http								X
 */
 void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 {
@@ -380,6 +394,12 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 		
 		// Handle protocols that run on top of IP
 		switch(protocol) {
+		case 17:
+			// UDP
+			nudp++;
+			
+			// TODO -- get DNS port from here
+			break;
 		case 0:
 			// TCP
 		case 6:
@@ -387,6 +407,8 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 			ntcp++;
 			printf("\n» TCP Info\n");
 			
+			int			i;
+			int			ascii	 = 0;	// Print ASCII payload for smtp/pop/etc.
 			char		src_port[40];
 			uint16_t	sp0, sp1;		// For port checks
 			char		dest_port[40];
@@ -432,14 +454,6 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 			sprintf(opts, "%02X%02X%02X%02X", ntohs(p[56]) >> 8, ntohs(p[57]) >> 8, 
 													ntohs(p[58]) >> 8, ntohs(p[59]) >> 8);
 			
-			// Identify TCP packet elements
-			
-			// DNS
-			if(dp0 == 0 && dp1 == 53)
-				ndns++;
-			if(sp0 == 0 && sp1 == 53)
-				ndns++;
-			
 			// Printing			
 			printf("Source Port = %s\n", src_port);
 			
@@ -462,6 +476,68 @@ void raw_print(u_char *user, const struct pcap_pkthdr *h, const u_char *p)
 			printf("Urgent = %s\n", urgent);
 			
 			printf("Options = %s\n", opts);
+			
+			// Identify TCP packet elements
+			
+			// DNS
+			if(dp0 == 0 && dp1 == 53){
+				ascii = 1;
+				ndns++;
+			}
+			if(sp0 == 0 && sp1 == 53){
+				ascii = 1;
+				ndns++;
+			}
+				
+			// SMTP
+			if(dp0 == 0 && dp1 == 25){
+				ascii = 1;
+				nsmtp++;
+			}
+			if(sp0 == 0 && sp1 == 25){
+				ascii = 1;
+				nsmtp++;
+			}
+			
+			// POP
+			if(dp0 == 0 && dp1 == 110){
+				ascii = 1;
+				npop++;
+			}
+			if(sp0 == 0 && sp1 == 110){
+				ascii = 1;
+				npop++;
+			}
+			
+			// IMAP
+			if(dp0 == 0 && dp1 == 143){
+				ascii = 1;
+				nimap++;
+			}
+			if(sp0 == 0 && sp1 == 143){
+				ascii = 1;
+				nimap++;
+			}
+			
+			// HTTP
+			if(dp0 == 0 && dp1 == 80){
+				ascii = 1;
+				nhttp++;
+			}
+			if(sp0 == 0 && sp1 == 80){
+				ascii = 1;
+				nhttp++;
+			}
+			
+			// Print payload ASCII if set to ascii mode
+			if(ascii){
+				printf("\n» Payload in ASCII\n");
+				for(i = 50; i < length; i++)
+					printf("%c", ntohs(p[i]) >> 8);
+				putchar('\n');
+			}
+			putchar('\n');
+
 			
 			break;
 
